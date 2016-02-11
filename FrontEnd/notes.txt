@@ -1,0 +1,4 @@
+User interface:
+
+open website -> see embedded google map -> click on map to indicate location "A" -> location processed by backend, yielding another location "B" -> display google directions from A to B.
+

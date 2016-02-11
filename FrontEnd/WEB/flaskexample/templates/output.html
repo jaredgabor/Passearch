@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <title>Passearch Results</title>
+
+    <!-- Bootstrap Core CSS -->
+    <link rel="stylesheet" href="../static/css/bootstrap.min.css" type="text/css">
+
+    <!-- Custom Fonts -->
+    <link href='http://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,800italic,400,300,600,700,800' rel='stylesheet' type='text/css'>
+    <link href='http://fonts.googleapis.com/css?family=Merriweather:400,300,300italic,400italic,700,700italic,900,900italic' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" href="../static/font-awesome/css/font-awesome.min.css" type="text/css">
+
+    <!-- Plugin CSS -->
+    <link rel="stylesheet" href="../static/css/animate.min.css" type="text/css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="../static/css/creative.css" type="text/css">
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+</head>
+
+    <header>
+        <div class="header-content">
+            <div class="header-content-inner">
+                <h1>Passearch!</h1>
+		  Results:
+<!--                 <hr> -->
+
+
+<!--                 <p>Start Bootstrap can help you build better websites using the Bootstrap CSS framework! Just download your template and start going, no strings attached!</p> -->
+<!--                 <a href="#about" class="btn btn-primary btn-xl page-scroll">Find Passengers</a> -->
+            </div>
+
+
+                   <div class="container">
+                      <div id="map" style = "height:600px; width:600px; margin:auto; border: 10px solid black;"></div>
+
+                   </div>
+
+      <form action="/input" method="GET">
+
+        <div>
+<!--           <button type="submit" class="btn btn-default btn-lg">Find Passengers!</button> -->
+          <button type="submit" class="btn btn-primary btn-xl">Try Again</button>
+        </div>
+
+<!--         <div> -->
+<!--          Latitude: <input type="text" name="latbox" id="latbox" value="" placeholder="0.0"> -->
+<!--          Longitude: <input type="text" name="lngbox" id="lngbox" value="" placeholder="0.0"> -->
+<!--         </div> -->
+
+      </form>
+    <script src="https://code.jquery.com/jquery-1.10.2.min.js"></script>
+    <script src="static/js/bootstrap.min.js"></script>
+
+        </div>
+    </header>
+
+
+
+<script type="text/javascript">
+var map;
+var myLat = 0;
+var marker;
+var input_latlng;
+var return_latlng;
+var heatmap;
+var coordslist;
+
+function initMap() {
+  var directionsService = new google.maps.DirectionsService;
+  var directionsDisplay = new google.maps.DirectionsRenderer;
+
+  map = new google.maps.Map(document.getElementById('map'), {
+    center: {lat: {{input_lat}}, lng: {{input_lng}} },
+    zoom: 14
+  });
+
+  directionsDisplay.setMap(map);
+
+  var latlng = new google.maps.LatLng({{input_lat}}, {{input_lng}} )
+  marker = new google.maps.Marker({
+      position: latlng,
+      map: map
+  });
+
+  input_latlng = latlng;
+  return_latlng = new google.maps.LatLng({{return_lat}}, {{return_lng}} );
+
+  calculateAndDisplayRoute(directionsService, directionsDisplay,
+                           input_latlng, return_latlng);
+
+var heatmapData = [
+ new google.maps.LatLng(40.77, -73.971),
+ new google.maps.LatLng(40.77, -73.972),
+ new google.maps.LatLng(40.77, -73.973),
+ new google.maps.LatLng(40.77, -73.974),
+ new google.maps.LatLng(40.771, -73.971),
+ new google.maps.LatLng(40.771, -73.972),
+ new google.maps.LatLng(40.771, -73.973),
+ new google.maps.LatLng(40.771, -73.974),
+ new google.maps.LatLng(40.772, -73.971),
+ new google.maps.LatLng(40.772, -73.972)
+];
+
+  $.getJSON("/_fetchcoords",
+            function(data)
+            {
+              coordslist = [];
+              console.log("TESTING");
+              console.log("DATA DATA:", data.result[0]);
+              $.each( data.result, function( key, val ) 
+                            {
+                             coordslist.push({
+                               location: new google.maps.LatLng(
+                                    parseFloat(val[0]),
+                                    parseFloat(val[1])),
+                               weight: parseFloat(val[2])}
+                               );
+<!--                              console.log("VALUE", val[0], val[1]); -->
+                            });
+              console.log("coordslist", coordslist[0].weight);
+<!--               make_heatmap(coordslist); -->
+
+              heatmap = new google.maps.visualization.HeatmapLayer({
+                   data: coordslist
+<!-- <\!--                    data: heatmapData -\-> -->
+                });
+
+              heatmap.setMap(map);
+              heatmap.set("radius", 0.0005);
+              heatmap.set("opacity", 0.5);
+<!--               heatmap.set("maxIntensity", 1000.) -->
+              heatmap.set("dissipating", false)
+
+
+            }
+           );
+
+  
+}
+
+
+function calculateAndDisplayRoute(directionsService, directionsDisplay,
+                                  input_latlng, return_latlng) {
+  directionsService.route({
+    origin: input_latlng,
+    destination: return_latlng,
+    travelMode: google.maps.TravelMode.DRIVING
+  }, function(response, status) {
+    if (status === google.maps.DirectionsStatus.OK) {
+      directionsDisplay.setDirections(response);
+    } else {
+      window.alert('Directions request failed due to ' + status);
+    }
+  });
+}
+
+<!-- $(document).ready(function() -->
+<!--  { -->
+<!--   $.getJSON("/_fetchcoords", -->
+<!--             function(data) -->
+<!--             { -->
+<!--               coordslist = []; -->
+<!--               console.log("DATA DATA:", (data.result[0])); -->
+<!--               $.each( data.result, function( key, val )  -->
+<!--                             { -->
+<!--                              coordslist.push({ -->
+<!--                                location: new google.maps.LatLng( -->
+<!--                                     parseFloat(val[0]), -->
+<!--                                     parseFloat(val[1])), -->
+<!--                                weight: parseFloat(val[2])} -->
+<!--                                ); -->
+<!--                              console.log("VALUE", val[0]); -->
+<!--                             }); -->
+<!--               console.log("coordslist", coordslist[0].weight); -->
+<!-- <\!--               make_heatmap(coordslist); -\-> -->
+<!--             } -->
+<!--            ); -->
+
+<!--   };  -->
+
+<!-- function make_heatmap(coordslist) { -->
+<!--   heatmap = new google.maps.visualization.HeatmapLayer({ -->
+<!-- <\!--      data: coordslist -\-> -->
+<!--     data: heatmapData -->
+<!--   }); -->
+ 
+<!--   console.log("CCC", coordslist[0].location.lat()); -->
+
+<!--   heatmap.setMap(map); -->
+<!--   heatmap.set("radius", 300); -->
+<!--   heatmap.set("opacity", 0.8); -->
+
+<!-- } -->
+
+    </script>
+
+    <script async defer
+      src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDdyZ3iI9FcEF6qloq-cJ6fmczI6c4mluw&callback=initMap&libraries=visualization">
+    </script>
+
+
+    <!-- jQuery -->
+    <script src="../static/js/jquery.js"></script>
+
+    <!-- Placed at the end of the document so the pages load faster -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+
+
+    <!-- Bootstrap Core JavaScript -->
+    <script src="../static/js/bootstrap.min.js"></script>
+
+    <!-- Plugin JavaScript -->
+    <script src="../static/js/jquery.easing.min.js"></script>
+    <script src="../static/js/jquery.fittext.js"></script>
+    <script src="../static/js/wow.min.js"></script>
+
+    <!-- Custom Theme JavaScript -->
+    <script src="../static/js/creative.js"></script>
+
+</body>
+
+</html>
