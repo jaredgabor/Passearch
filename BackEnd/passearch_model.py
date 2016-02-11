@@ -151,6 +151,17 @@ def coord_to_pix(coord, lngrange = lngrange, latrange=latrange):
     return np.array([pix_x, pix_y])
 
 
+def coord_to_pix_all(lat, lng, lngrange=lngrange, latrange=latrange):
+    """Convert many lat/lng values to pixel indexes
+    """
+    # Figure out the pixel sizes in units of 
+    pix_size_x = (lngrange[1] - lngrange[0]) / nbins[0]
+    pix_size_y = (latrange[1] - latrange[0]) / nbins[1]
+    
+    pix_x = (lng - lngrange[0]) / pix_size_x
+    pix_y = (lat - latrange[0]) / pix_size_y
+    return pix_x, pix_y
+
 def get_time_index():
     """Fetch the current time index
     
