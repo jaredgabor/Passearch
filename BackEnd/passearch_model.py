@@ -27,6 +27,9 @@ lngmax = coord_top_right_default[0]
 latmin = coord_bottom_left_default[1]
 latmax = coord_top_right_default[1]
 
+# Default image is 6.2 miles = 10km across.  100 small pix = 0.775 miles.
+# One lowres pixel = 0.194 miles.
+
 def make_2dhist(lng, lat, npix_base=npix_default, 
                 coord_bottom_left = coord_bottom_left_default,
                 coord_top_right = coord_top_right_default,
@@ -139,7 +142,8 @@ def coord_to_pix(coord, lngrange = lngrange, latrange=latrange):
     if (coord[0] < lngrange[0]) or (coord[0] > lngrange[1]) or \
             (coord[1] < latrange[0]) or (coord[1] > latrange[1]):
         print "BAD COORDINATE", coord[0], coord[1], type(coord[0])
-        raise Exception("coordinate error ")
+##        raise Exception("coordinate error ")
+        return None
     
     # Figure out the pixel sizes
     pix_size_x = (lngrange[1] - lngrange[0]) / nbins[0]
@@ -162,7 +166,7 @@ def coord_to_pix_all(lat, lng, lngrange=lngrange, latrange=latrange):
     pix_y = (lat - latrange[0]) / pix_size_y
     return pix_x, pix_y
 
-def get_time_index():
+def get_time_index(timestamp=None):
     """Fetch the current time index
     
     The "time index" here refers to the time axis of our binned
@@ -173,17 +177,19 @@ def get_time_index():
     
     ***Requires datetime module
     """
-    time_now = datetime.datetime.now()
-    NYC_offset = 0  # hours relative to west coast
+    if timestamp is not None:
+        pass
 
-    if NYC_offset != 3:
-        print "WARNING!!!"
-        print "NYC OFFSET SET TO", NYC_offset
-        print ""
+##    time_now = datetime.datetime.now()
+    time_now = pd.Timestamp.now('US/Eastern')
 
-    hour_now = time_now.hour + NYC_offset
+    hour_now = time_now.hour
     day_now = time_now.weekday()
-    return day_now, hour_now
+
+    # Approximate fractional month
+    month_now = time_now.day / 30.0 + (time_now.month - 1)
+
+    return day_now, hour_now, month_now, time_now
     
 # Function to calculate the distance between one pixel
 # in an image and all other pixels
@@ -192,17 +198,32 @@ def imdist(image, pixel):
     # Create array of index values.  igrid[0] is an array
     # of the same size as "image" which gives the x-pixel
     # indexes of each pixel
-    npix_x, npix_y = image.shape
-    igrid = np.mgrid[0:npix_x, 0:npix_y].astype(float)
-    dist = np.sqrt( (igrid[0] - pixel[0])**2.0 + (igrid[1]-pixel[1])**2.0)
+    pix_x = pixel[0]
+    pix_y = pixel[1]
+
+##    npix_x, npix_y = image.shape
+    npix_y, npix_x = image.shape
+##    igrid = np.mgrid[0:npix_x, 0:npix_y].astype(float)
+    igrid = np.mgrid[0:npix_y, 0:npix_x].astype(float)
+    dist = np.sqrt( (igrid[0] - pix_y)**2.0 + (igrid[1]-pix_x)**2.0)
     return dist
 
 
 def penalty_func(distance_image):
+    # NB: This is operating on low-resolution image
+    scale_radius = 10.0  # in pixels
 ##    return 1.0 / distance_image
-    newim = np.ones_like(distance_image)
+##    newim = np.ones_like(distance_image) 
 ##    newim = distance_image.copy()
-    newim[distance_image > 3.0] = np.nan
+
+    # Here, the weighting decreases with distance.  This works is
+    # we're trying to find the maximum demand (but not if we're
+    # doing the minimum wait time!
+##    newim = np.ones_like(distance_image) - distance_image / scale_radius
+
+    newim = np.ones_like(distance_image) + distance_image / 50.
+
+    newim[distance_image > scale_radius] = np.nan
     return newim
     pass
 
@@ -230,6 +251,20 @@ def penalty_func(distance_image):
 #     return LngLat
 #     pass
 
+def convert_pix_to_lowres(pixel, im):
+    """Convert a 2-dimensional standard pixel position to a low-res version.
+
+    im: a low=resolution image whose shape we'll use to determine 
+       the reduction factor (aka zoom factor)
+       
+    """
+    imshape = np.array(im.shape)
+    
+    reduction_factor = npix_default / np.min(imshape)
+
+##    reduction_factor = 25
+    pixel = pixel / reduction_factor
+    return pixel
 
 def model2(im, lng, lat):
     """Given the longitude, latitude, choose the best destination"""
@@ -238,39 +273,39 @@ def model2(im, lng, lat):
     # Find the pixel corresponding to this lng and lat
     coord = [lng, lat]
     pixel = coord_to_pix(coord)
+    hipix = pixel
 
-    im = im.transpose()
+##    im = im.transpose()
 
     # Convert this pixel to the lowres-version
-    hipix = pixel
-    pixel = hipix / 50
+    pixel = convert_pix_to_lowres(pixel, im)
 
     # Compute the distance image.
     dist_im = imdist(im, pixel)
 
     print "DISTIM", np.nanmax(dist_im.ravel()), im.shape, pixel, hipix
 
-#     print dist_im
-
     # Find the locally-weighted best destination
-##    print "TYPE IM", type(im), type(dist_im)
     local = im * penalty_func(dist_im)
 
-##    np.save("junk.npy", local)
-
+    np.save("junk.npy", dist_im)
+    np.save("local.npy", local)
+    np.save("base_im.npy", im)
     print "MAX", np.nanmin(local)
 
     # Find the MINIMUM pixel
     ipix_max = np.nanargmin(local)
     ij_max = np.array(np.unravel_index(ipix_max, im.shape))
 
-    print "MAXPIX", ipix_max, ij_max
-
     # Convert this pixel back to hires version
-    ij_max = ij_max * 50
+##    ij_max = ij_max * 50
+    ij_max = ij_max * 25
+
+    # ij_max here is given as [pix_y, pix_x] as for images.
+    # We must reverse it.
     
     # Convert the pixel coords back to lat and long
-    LngLat = pix_to_coord(ij_max)
+    LngLat = pix_to_coord(ij_max[::-1])
 
     return LngLat
 
@@ -309,7 +344,7 @@ def mask_lowres_to_hires(im_low, maskim = None):
     print "TESTME PASSEARCH_MODEL", np.nansum(maskim)
 
     # Zoom in on the lowres image to make it highres
-    reduction_factor = 50
+    reduction_factor = 25
     order = 1  # interpolation order for zoom in
     zoomim = ndimage.interpolation.zoom(im_low, reduction_factor, order=order)
     ny_zoom, nx_zoom = zoomim.shape
@@ -318,8 +353,20 @@ def mask_lowres_to_hires(im_low, maskim = None):
     # (NB: because the zoomed im may have the incorrect shape)
     maskedim = maskim.astype('float') * 0.0
         
+    print "HEEEEEY", maskedim.shape, zoomim.shape, ny_zoom, nx_zoom
     maskedim[0:ny_zoom, 0:nx_zoom] = zoomim
-    maskedim[maskim <= 0.0] = np.nan
-    maskedim[~np.isfinite(maskim)] = np.nan
+#     maskedim[maskim <= 0.0] = np.nan
+#     maskedim[~np.isfinite(maskim)] = np.nan
     return maskedim
 
+
+def expand_features(xx, order=9):
+    """Expand features xx into a polynomial in xx                               
+                                                                                
+    xx: a 1-D array                                                             
+    """
+    features = xx
+    for index in np.arange(2, order+1):
+        features = np.column_stack([features, xx**index])
+
+    return features
