@@ -16,8 +16,6 @@ if filename and os.path.isfile(filename):
        startup_file = fobj.read()
     exec(startup_file)
 
-print "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM"
-
 
 from flask import render_template
 from flask import request
@@ -41,6 +39,19 @@ dbname = 'taxi'
 # db = create_engine('postgresql://%s%s/%s'%(user,host,dbname))
 # con = None
 # con = psycopg2.connect(database = dbname, user = user)
+
+## Load the models into memory for fast lookup.
+DATA_DIR = passearch_model.data_dir
+model_ims_file = DATA_DIR + 'model_ims_lowres.npz'
+with np.load(model_ims_file) as dat:
+    model_ims = dat['arr_0']
+
+fit_file = DATA_DIR + 'fit_arr.npz'
+# with np.load(fit_file) as dat:
+#     fit_arr = dat['arr_0']
+fit_arr = None
+
+print "Done reading model data"
 
 class ModelData:
     def __init__(self):
@@ -69,42 +80,53 @@ def passearch_input():
 @app.route('/output')
 def passearch_output():
   #pull 'birth_month' from input field and store it
-##  patient = request.args.get('birth_month')
-##  patient = request.args.get('latspan')
   lat = float(request.args.get('latbox'))
   lng = float(request.args.get('lngbox'))
 
-  print "AAAAAARRRRRRGGGGGHHHHH", lat, lng
-
-  
   # Careful w/ lat/lng order here!
-  result, result_map = passearch_backend.get_results(lng, lat)  # con)
+  try:
+      check, result, result_map, return_time = \
+          passearch_backend.get_results(lng, lat, model_ims, fit_arr)
+  except:
+      print "UNKNOWN ERROR!!!"
+      return render_template("unknown.html")
+
+#   check, result, result_map, return_time = \
+#       passearch_backend.get_results(lng, lat, model_ims, fit_arr)
+
+  print "CHECKING", check
+  if check < 1:
+      return render_template("badcoords.html")
+
+  # if all checks were OK, then continue
   return_lat = result[1]
   return_lng = result[0]
+
+  np.save('resultmap.npy', result_map)
 
   model_data.set_map(result_map)
 
   return render_template("output.html", return_lat = return_lat, 
                          return_lng = return_lng,
-                         input_lat = lat, input_lng = lng)
-      
+                         input_lat = lat, input_lng = lng, 
+                         return_time=return_time)
 
 
-# @app.route('/_submitcoords')
-# def process_coords():
-#     testval = request.args.get('data',0,type=float)
-    
-#     answer = testval*2.0
-#     print "HEYEYEYEYEYEYE"
-    
-#     return jsonify(result=answer)
+@app.route('/badcoords')
+def bad_coords():
+    return render_template("badcoords.html")
 
+@app.route('/unknown')
+def unknown():
+    return render_template("unknown.html")
 
 @app.route('/_fetchcoords')
 def fetch_coords():
     
     # Turn the model image (low-resolution) into a high-resolution image.
     modelim_hires = passearch_model.mask_lowres_to_hires(model_data.bestmap)
+
+##    np.save('testim.npy', modelim_hires)
 
     # Subsample a small region?
 
