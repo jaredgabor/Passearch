@@ -288,10 +288,10 @@ def model2(im, lng, lat):
     # Find the locally-weighted best destination
     local = im * penalty_func(dist_im)
 
-    np.save("junk.npy", dist_im)
-    np.save("local.npy", local)
-    np.save("base_im.npy", im)
-    print "MAX", np.nanmin(local)
+#    np.save("junk.npy", dist_im)
+#    np.save("local.npy", local)
+#    np.save("base_im.npy", im)
+#    print "MAX", np.nanmin(local)
 
     # Find the MINIMUM pixel
     ipix_max = np.nanargmin(local)
