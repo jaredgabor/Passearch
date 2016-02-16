@@ -118,6 +118,10 @@ var heatmapData = [
  new google.maps.LatLng(40.772, -73.972)
 ];
 
+console.log("FETCHING")
+
+
+
   $.getJSON("/_fetchcoords",
             function(data)
             {
@@ -148,6 +152,7 @@ var heatmapData = [
 <!--               heatmap.set("maxIntensity", 1000.) -->
               heatmap.set("dissipating", false)
 
+console.log("DONE SETTING UP HEAT MAP")
 
             }
            );
