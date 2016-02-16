@@ -7,7 +7,8 @@ if filename and os.path.isfile(filename):
     exec(startup_file)
 
 
-other_pythondir1 = "/home/ubuntu/Passearch"
+##other_pythondir1 = "/home/ubuntu/Passearch"
+other_pythondir1 = "/home/ubuntu/WORKDIR"
 for root, dirs, files in os.walk(other_pythondir1):
     sys.path.append(root)
 
