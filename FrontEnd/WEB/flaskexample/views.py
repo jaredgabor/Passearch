@@ -124,7 +124,10 @@ def unknown():
 def fetch_coords():
     
     # Turn the model image (low-resolution) into a high-resolution image.
-    modelim_hires = passearch_model.mask_lowres_to_hires(model_data.bestmap)
+##    modelim_hires = passearch_model.mask_lowres_to_hires(model_data.bestmap)
+    modelim_hires = model_data.bestmap
+
+    print "BLAHBLAHBLAH"
 
 ##    np.save('testim.npy', modelim_hires)
 
@@ -150,11 +153,16 @@ def fetch_coords():
 
     # Renormalize the weights.  They must be inverted so that 
     # higher weight == more demand.
-    weights = weights - 0.9 * weights.min()
-    weights = 1.0 / weights
-    weights = weights - weights.min()
-    weights = weights / weights.max() * 100
-    weights += 1
+#    weights = weights - 0.9 * weights.min()
+    weights = passearch_model.norm_weights(weights, do_log=False)
+#    weights = 1.0 / weights
+#    weights = weights - weights.min()
+#    print 'WEIGHTS MINMAX', weights.min(), weights.max()
+#    weights = weights / weights.sum() * len(weights)
+#    print 'WEIGHTS MINMAX', weights.min(), weights.max()
+#    weights = weights - weights.min()
+#    weights = weights / weights.max() * 100
+#    weights += 1
 
     # Create a data table of lat, lng, and weights based on each pixel.
     df = pd.DataFrame(lat, columns=['latitude'])
@@ -162,14 +170,14 @@ def fetch_coords():
     df['weights'] = weights
 
     # take a small subset
-    ii = 3
-    df = df[np.array(df.index) % ii == 0]
+#    ii = 3
+#    df = df[np.array(df.index) % ii == 0]
 #    ww = np.random.choice(np.arange(len(df)), size = len(df)/3, replace=False)
 #    df = df[ww]
 ##    df = df.sample(frac=0.5)
 
 
-    df['weights'] = (df['weights'] - 1.0)*100. + 1.0
+#    df['weights'] = (df['weights'] - 1.0)*100. + 1.0
 
     print "UNIQUE POINTS:", \
         weights.min(),weights.max(), len(df), wgood.sum()
@@ -184,8 +192,8 @@ def fetch_coords():
 #     data = df.to_dict(orient='index')
     data = df.to_dict(orient = 'record')
 
+##    print data
 ##    print "MY DATA", df[0:10]
 ##    print "MY DATA", data
 
     return jsonify(result=data)
-
