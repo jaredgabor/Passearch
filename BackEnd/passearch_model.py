@@ -122,6 +122,7 @@ def pix_to_coord_all(im, lngrange=lngrange, latrange=latrange,
     """Convert all pixel positions in a standard image to lng, lat coords.
     """
     npix_y, npix_x = im.shape
+    nbins = [npix_x, npix_y]
     pix_size_x = (lngrange[1] - lngrange[0]) / nbins[0]
     pix_size_y = (latrange[1] - latrange[0]) / nbins[1]
     
@@ -345,7 +346,7 @@ def mask_lowres_to_hires(im_low, maskim = None):
 
     # Zoom in on the lowres image to make it highres
     reduction_factor = 25
-    order = 1  # interpolation order for zoom in
+    order = 0  # interpolation order for zoom in
     zoomim = ndimage.interpolation.zoom(im_low, reduction_factor, order=order)
     ny_zoom, nx_zoom = zoomim.shape
 
@@ -370,3 +371,22 @@ def expand_features(xx, order=9):
         features = np.column_stack([features, xx**index])
 
     return features
+
+
+def norm_weights(weights, do_log=False):
+    """ Normalize the map weights for nice visualization.
+    """
+    weights = 1.0 / weights
+
+    if do_log:
+        weights = np.log10(weights)
+
+    print "WWWWW", weights.min(), weights.max()
+    weights = weights - weights.min()
+    print "WWWWW", weights.min(), weights.max()
+
+    weights = weights / weights.sum() * len(weights)
+    
+##    np.save("junk2.npy", weights)
+
+    return weights
